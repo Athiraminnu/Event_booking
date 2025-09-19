@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from EventBookingApp.models import Users, Events, Bookings
 from rest_framework_simplejwt.tokens import RefreshToken
-from EventBookingApp.serializer import EventsSerializer
+from EventBookingApp.serializer import EventsSerializer, BookingSerializer
 
 
 # Create your views here.
@@ -124,6 +124,20 @@ def book_tickets(request):
         event.save()
 
         return Response({'message': 'Booking successful', 'booking_id': booking.id}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+def view_my_bookings(request, user_id):
+    try:
+        event = Bookings.objects.filter(user_id=user_id)
+    except Bookings.DoesNotExist:
+        return Response({"message": "No Events Found!"}, status=404)
+
+    if not event.exists():
+        return Response({"message": "No Events Found!"}, status=404)
+
+    serialized_data = BookingSerializer(event, many=True).data
+    return Response(serialized_data, status=200)
 
 
 
