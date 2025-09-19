@@ -40,6 +40,7 @@ def user_registration(request):
 
     return Response({"message": "User registered successfully"}, status=status.HTTP_201_CREATED)
 
+
 @api_view(['POST'])
 def user_login(request):
     data = request.data
@@ -54,16 +55,22 @@ def user_login(request):
     if not check_password(password, user.password):
         return Response({"error": "Invalid email or password"}, status=status.HTTP_401_UNAUTHORIZED)
 
-    # If valid
+    refresh = RefreshToken.for_user(user)
+
     return Response({
         "message": "Login successful",
         "user": {
             "id": user.id,
             "name": user.name,
             "email": user.email,
-            "role": user.role
+            "role": user.role,
+        },
+        "tokens": {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
         }
     }, status=status.HTTP_200_OK)
+
 
 @api_view(['POST'])
 def user_logout(request):
