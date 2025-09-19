@@ -1,5 +1,7 @@
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.hashers import make_password, check_password
+from django.http import HttpResponseForbidden
+from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -140,5 +142,32 @@ def view_my_bookings(request, user_id):
     return Response(serialized_data, status=200)
 
 
+def is_admin(user):
+    return user.role.lower() == "admin"
 
+
+@api_view(["GET", "PUT", "PATCH", "DELETE"])
+def event_detail(request, pk):
+    event = get_object_or_404(Events, pk=pk)
+
+    if request.method == "GET":
+        serializer = EventsSerializer(event)
+        return Response(serializer.data)
+
+    elif request.method in ["PUT", "PATCH"]:
+        if not is_admin(request.user):
+            return Response({"detail": "Only admins can update events."},
+                            status=status.HTTP_403_FORBIDDEN)
+        serializer = EventsSerializer(event, data=request.data, partial=(request.method == "PATCH"))
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == "DELETE":
+        if not is_admin(request.user):
+            return Response({"detail": "Only admins can delete events."},
+                            status=status.HTTP_403_FORBIDDEN)
+        event.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
