@@ -1,11 +1,11 @@
 from django.contrib.auth import authenticate, login, logout
-
 from django.contrib.auth.hashers import make_password, check_password
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from EventBookingApp.models import Users
+from EventBookingApp.models import Users, Events, Bookings
 from rest_framework_simplejwt.tokens import RefreshToken
+from EventBookingApp.serializer import EventsSerializer
 
 
 # Create your views here.
@@ -78,11 +78,53 @@ def user_logout(request):
     return Response({'message': 'Logged out successfully'}, status=200)
 
 
-# @api_view(['GET'])
-# def booking(request):
-#     booking_records = AppointmentDetails.objects.all()
-#     serializer = AppointmentDetailsSerializers(booking_records, many=True)
-#     return Response(serializer.data)
+@api_view(['GET'])
+def event(request):
+    booking_records = Events.objects.all()
+    serializer = EventsSerializer(booking_records, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET', 'POST'])
+def book_tickets(request):
+    if request.method == 'GET':
+        title = request.GET.get('title')
+        if not title:
+            return Response({"error": "Title parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            event = Events.objects.get(title=title)
+        except Events.DoesNotExist:
+            return Response({"error": "Event not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = EventsSerializer(event)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        user_id = request.data.get('user_id')
+        event_id = request.data.get('event_id')
+        seats_requested = int(request.data.get('seats', 1))
+
+        try:
+            user = Users.objects.get(id=user_id)
+            event = Events.objects.get(id=event_id)
+        except (Users.DoesNotExist, Events.DoesNotExist):
+            return Response({'error': 'Invalid user or event'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if event.available_seats < seats_requested:
+            return Response({'error': 'Not enough seats available'}, status=status.HTTP_400_BAD_REQUEST)
+
+        booking = Bookings.objects.create(
+            user=user,
+            event=event,
+            seats_booked=seats_requested,
+            status="Confirmed"
+        )
+        event.available_seats -= seats_requested
+        event.save()
+
+        return Response({'message': 'Booking successful', 'booking_id': booking.id}, status=status.HTTP_201_CREATED)
+
 
 
 

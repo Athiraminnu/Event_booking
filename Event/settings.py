@@ -44,6 +44,7 @@ SIMPLE_JWT = {
 
 
 INSTALLED_APPS = [
+    'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'EventBookingApp',
     'django.contrib.admin',
